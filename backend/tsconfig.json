@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    /* =========================
+       Project Structure
+    ========================= */
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    /* =========================
+       Runtime Target
+    ========================= */
+    "target": "ES2021",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    /* =========================
+       Node Compatibility
+    ========================= */
+    "types": ["node"],
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    /* =========================
+       Build Output
+    ========================= */
+    "sourceMap": true,
+    "declaration": false,
+
+    /* =========================
+       Type Safety
+    ========================= */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+
+    /* =========================
+       Performance & DX
+    ========================= */
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
+}
