@@ -3,13 +3,14 @@ import cors from "cors";
 import express, { NextFunction, type Request, type Response } from "express";
 import cookieParser from "cookie-parser";
 import { config } from "./config/app.config";
-import connectDatabase from "./database/modules/database";
+import connectDatabase from "./database/models/database";
 import { errorHandler } from "./middleware/errorHandler";
 import { HTTPSTATUS } from "./config/http.config";
 import { asyncHandler } from "./middleware/asyncHandler";
+import authRoutes from "./modules/auth/auth.routes";
 
 const app = express();
-// const BASE_PATH = config.BASE_PATH;
+const BASE_PATH = config.BASE_PATH;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -24,6 +25,8 @@ app.get(
     });
   }),
 );
+
+app.use(`${BASE_PATH}/auth`, authRoutes);
 
 app.use(errorHandler);
 
