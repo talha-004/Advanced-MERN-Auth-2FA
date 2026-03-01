@@ -1,13 +1,25 @@
 import { ErrorCode } from "../../common/enums/error-code.enum";
 import { VerificationEnum } from "../../common/enums/verification-code.enum";
 import { LoginDto, RegisterDto } from "../../common/interface/auth.interface";
-import { BadRequestException } from "../../common/utils/catch-errors";
-import { fortyFiveMinutesFromNow } from "../../common/utils/date-time";
+import {
+  BadRequestException,
+  UnauthorizedException,
+} from "../../common/utils/catch-errors";
+import {
+  calculateExpirationDate,
+  fortyFiveMinutesFromNow,
+  ONE_DAY_IN_MS,
+} from "../../common/utils/date-time";
 import jwt from "jsonwebtoken";
 import SessionModel from "../../database/models/session.model";
 import UserModel from "../../database/models/user.model";
 import VerificationCodeModel from "../../database/models/verification.model";
 import { config } from "../../config/app.config";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../../common/utils/jwt";
 
 export class AuthService {
   public async register(registerData: RegisterDto) {
@@ -69,35 +81,102 @@ export class AuthService {
       userAgent,
     });
 
-    const accessToken = jwt.sign(
-      {
-        userId: user._id.toString(),
-        sessionId: session._id.toString(),
-      },
-      config.JWT.SECRET,
-      {
-        expiresIn: config.JWT.EXPIRES_IN as jwt.SignOptions["expiresIn"],
-        audience: "user",
-      },
-    );
+    const accessToken = signAccessToken({
+      userId: user._id,
+      sessionId: session._id,
+    });
 
-    const refreshToken = jwt.sign(
-      {
-        sessionId: session._id.toString(),
-      },
-      config.JWT.REFRESH_SECRET,
-      {
-        expiresIn: config.JWT
-          .REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-        audience: "user",
-      },
-    );
+    const refreshToken = signRefreshToken({
+      sessionId: session._id,
+    });
 
     return {
       user,
       accessToken,
       refreshToken,
       mfaRequired: false,
+    };
+  }
+
+  public async refreshToken(refreshToken: string) {
+    let payload;
+
+    try {
+      payload = verifyRefreshToken(refreshToken);
+    } catch (error) {
+      throw new UnauthorizedException("Invalid or expired refresh token");
+    }
+
+    if (!payload) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    const session = await SessionModel.findById(payload.sessionId);
+    const now = Date.now();
+
+    if (!session) {
+      throw new UnauthorizedException("Session does not exist");
+    }
+
+    if (session.expiredAt.getTime() <= now) {
+      throw new UnauthorizedException("Session expired");
+    }
+
+    const sessionRequireRefresh =
+      session.expiredAt.getTime() - now <= ONE_DAY_IN_MS;
+
+    if (sessionRequireRefresh) {
+      session.expiredAt = calculateExpirationDate(
+        config.JWT.REFRESH_EXPIRES_IN,
+      );
+      await session.save();
+    }
+    const newRefreshToken = sessionRequireRefresh
+      ? signRefreshToken({
+          sessionId: session._id,
+        })
+      : undefined;
+
+    const accessToken = signAccessToken({
+      userId: session.userId,
+      sessionId: session._id,
+    });
+
+    return {
+      accessToken,
+      newRefreshToken,
+    };
+  }
+
+  public async verifyEmail(code: string) {
+    const validCode = await VerificationCodeModel.findOne({
+      code: code,
+      type: VerificationEnum.EMAIL_VERIFICATION,
+      expiresAt: { $gt: new Date() },
+    });
+
+    console.log(validCode);
+
+    if (!validCode) {
+      throw new BadRequestException("Invlaid or expired verification code");
+    }
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      validCode.userId,
+      { isEmailVerified: true },
+      { new: true },
+    );
+
+    if (!updatedUser) {
+      throw new BadRequestException(
+        "Unable to verify email address",
+        ErrorCode.VALIDATION_ERROR,
+      );
+    }
+
+    await validCode.deleteOne();
+    return {
+      user: updatedUser,
     };
   }
 }
