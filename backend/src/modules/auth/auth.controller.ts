@@ -3,8 +3,10 @@ import { asyncHandler } from "../../middleware/asyncHandler";
 import { AuthService } from "./auth.service";
 import { HTTPSTATUS } from "../../config/http.config";
 import {
+  emailSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   verificationSchema,
 } from "../../common/validators/auth.validator";
 import {
@@ -13,6 +15,7 @@ import {
   setAuthenticationCookie,
 } from "../../common/utils/cookie";
 import { UnauthorizedException } from "../../common/utils/catch-errors";
+import { email } from "zod/v4";
 
 export class AuthController {
   private authService: AuthService;
@@ -85,6 +88,17 @@ export class AuthController {
 
       return res.status(HTTPSTATUS.OK).json({
         message: "Email verified successfully",
+      });
+    },
+  );
+
+  public forgotPassword = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const email = emailSchema.parse(req.body.email);
+      await this.authService.forgotPassword(email);
+
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Password resent email sent",
       });
     },
   );
