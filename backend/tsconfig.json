@@ -41,6 +41,6 @@
     "forceConsistentCasingInFileNames": true
   },
 
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "@types"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
 }
