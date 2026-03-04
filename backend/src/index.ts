@@ -9,6 +9,9 @@ import { HTTPSTATUS } from "./config/http.config";
 import { asyncHandler } from "./middleware/asyncHandler";
 import authRoutes from "./modules/auth/auth.routes";
 import passport from "./middleware/passport";
+import { authonticateJWT } from "./common/strategies/jwt.strategy";
+import sessionRoutes from "./modules/session/session.routes";
+import mfaRoutes from "./modules/mfa/mfa.routes";
 
 const app = express();
 const BASE_PATH = config.BASE_PATH;
@@ -29,6 +32,8 @@ app.get(
 );
 
 app.use(`${BASE_PATH}/auth`, authRoutes);
+app.use(`${BASE_PATH}/mfa`, authonticateJWT, mfaRoutes);
+app.use(`${BASE_PATH}/session`, authonticateJWT, sessionRoutes);
 
 app.use(errorHandler);
 
