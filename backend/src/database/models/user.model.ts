@@ -44,12 +44,15 @@ const userSchema = new Schema<UserDocument>(
 );
 
 userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    return next();
+  }
+
   if (!this.password) {
     throw new Error("Password not set on user document");
   }
-  if (this.isModified("password")) {
-    this.password = await hashValue(this.password);
-  }
+
+  this.password = await hashValue(this.password);
   next();
 });
 
